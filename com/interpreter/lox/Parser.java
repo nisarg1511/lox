@@ -138,8 +138,35 @@ public class Parser {
             Expr right = unary();
             return new Expr.Unary(operator, right);
         }
-        return primary();
+        return call();
     }
+
+    private Expr call(){
+        Expr expr=  primary();
+        while(true){
+            if(match(TokenType.LEFT_PAREN)){
+                expr = finishCall(expr);
+            }else{
+                break;
+            }
+        }
+        return expr;
+    }
+
+    private Expr finishCall(Expr callie){
+        List<Expr> arguments = new ArrayList<>();
+        if(!check(TokenType.RIGHT_PAREN)){
+            do {
+                if(arguments.size()>255){
+                    error(peek(), "Can't have more than 255 arguments");
+                }
+                arguments.add(assignment());
+            } while (match(TokenType.COMMA));
+        }
+        Token paren =  consume(TokenType.RIGHT_PAREN,"Expect ')' after arguments");
+        return new Expr.Call(callie,paren,arguments);
+    }
+
 
     private Expr primary() {
         if (match(TokenType.FALSE)) {
@@ -238,13 +265,50 @@ public class Parser {
         return new Stmt.Print(value);
     }
 
+    private Stmt.Function function(String kind){
+        Token name = consume(TokenType.IDENTIFIER,"Expect " + kind + " name.");
+        consume(TokenType.LEFT_PAREN,"Expect '(' after " + kind +" name.");
+        List<Token> params = new ArrayList<>();
+        if(!check(TokenType.RIGHT_PAREN)){
+            do { 
+                if(params.size()>255){
+                    error(peek(), "Can't have more than 255 parameters.");
+                }
+                params.add(consume(TokenType.IDENTIFIER,"Expect parameter name."));
+            } while (match(TokenType.COMMA));
+        
+        }
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters");
+        consume(TokenType.LEFT_BRACE,"Expect '{' before "+kind+" body.");
+        List<Stmt> body = block();
+        return new Stmt.Function(name,params,body);
+    }
+
     private Stmt expressionStatement() {
         Expr value = expression();
         consume(TokenType.SEMICOLON, "Expected ; at end of statement");
         return new Stmt.Expression(value);
     }
 
+    private Stmt returnStmt(){
+        Token keyword = previous();
+        Expr value =null;
+
+        if(!check(TokenType.SEMICOLON)){
+            value = expression();
+        }
+
+        consume(TokenType.SEMICOLON,"Expect ';' after return value.");
+        return new Stmt.Return(keyword,value);
+    }
+
     private Stmt statement() {
+        if(match(TokenType.RETURN)){
+            return  returnStmt();
+        }
+        if(match(TokenType.FUN)){
+            return function("function");
+        }
         if(match(TokenType.CONTINUE)){
             return continueStatement();
         }

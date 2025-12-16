@@ -1,5 +1,7 @@
 package com.interpreter.lox;
 
+import java.util.List;
+
 @SuppressWarnings("unused")
 abstract class Expr {
 
@@ -22,6 +24,8 @@ abstract class Expr {
         R visitAssignExpr(Assign expr);
 
         R visitLogicalExpr(Logical expr);
+
+        R visitCallExpr(Call expr);
     }
 
     public static class Comma extends Expr {
@@ -63,6 +67,23 @@ abstract class Expr {
         }
     }
 
+    public static class Call extends  Expr{
+
+        public Call(Expr callie,Token paren,List<Expr> arguments) {
+            this.callie = callie;
+            this.paren = paren;
+            this.arguments = arguments;
+        }
+
+        @Override
+        <R> R accept(Visitor<R> visitor){
+            return visitor.visitCallExpr(this);
+        }
+
+        final Expr callie;
+        final Token paren;
+        final List<Expr> arguments;
+    }
     public static class Logical extends Expr{
         
         Logical(Expr left, Token operator, Expr right){
