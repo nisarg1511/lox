@@ -53,9 +53,21 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override 
     public Void visitClassStmt(Stmt.Class stmt){
+        Object superclass = null;
+        if(stmt.superClass!=null){
+            superclass = evaluate(stmt.superClass);
+            if(!(superclass instanceof LoxClass)){
+                Lox.error(stmt.superClass.name,"Superclass must be a valid class.");
+            }
+        }
+        environment.define(stmt.name.lexeme, null);
+        if(stmt.superClass!=null){
+            environment = new Environment(environment);
+            environment.define("super", superclass);
+        }
         Map<String,LoxFunction>  methods = new HashMap<>();
         Map<String,LoxFunction> staticMethods = new HashMap<>();
-        environment.define(stmt.name.lexeme,null);
+    
         for(Stmt.Function method:stmt.methods){
             LoxFunction function = new LoxFunction(method, environment, method.name.lexeme.equals("init"),method.isStatic);
             if(method.isStatic){
@@ -64,7 +76,11 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                 methods.put(method.name.lexeme, function);
             }
         }
-        LoxClass klass = new LoxClass(stmt.name.lexeme,methods,staticMethods);
+        LoxClass klass = new LoxClass(stmt.name.lexeme,(LoxClass) superclass,methods,staticMethods);
+        if(stmt.superClass!=null){
+            environment = environment.enclosing;
+        }
+
         environment.assign(stmt.name, klass);
         return null;
     }
@@ -205,6 +221,17 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         return function.call(this,arguments);
     }
 
+    @Override
+    public Object visitSuperExpr(Expr.Super expr) {
+        int distance = locals.get(expr);
+        LoxClass superclass = (LoxClass) environment.getAt(distance, "super");
+        LoxInstance object  = (LoxInstance) environment.getAt(distance - 1, "this");
+        LoxFunction method = superclass.findMethod(expr.method);
+        if(method==null){
+            throw new RuntimeError(expr.method, "Undefined property '" + expr.method.lexeme + "'.");
+        }
+        return method.bind(object);
+    }
 
     @Override
     public Object visitThisExpr(Expr.This expr){
@@ -214,10 +241,15 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Object visitGetExpr(Expr.Get expr){
         Object object = evaluate(expr.object);
-        if (object instanceof LoxInstance loxInstance) {
-            return loxInstance.get(expr.name);
-        }else if(object instanceof LoxClass loxClass){
-            return loxClass.get(expr.name);
+        switch (object) {
+            case LoxInstance loxInstance -> {
+                return loxInstance.get(expr.name);
+            }
+            case LoxClass loxClass -> {
+                return loxClass.get(expr.name);
+            }
+            default -> {
+            }
         }
         throw new RuntimeError(expr.name,
                 "Only instances have properties.");

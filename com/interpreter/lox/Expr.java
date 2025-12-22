@@ -6,6 +6,7 @@ import java.util.List;
 abstract class Expr {
 
     interface Visitor<R> {
+        R visitSuperExpr(Super expr);
 
         R visitCommaExpr(Comma expr);
 
@@ -160,7 +161,21 @@ abstract class Expr {
         final Token operator;
         final Expr right;
     }
+    public static class Super extends Expr{
 
+        public Super(Token keyword,Token method) {
+            this.keyword = keyword;
+            this.method = method;
+        }
+
+        @Override
+        <R> R accept(Visitor<R> visitor){
+            return visitor.visitSuperExpr(this);
+        }
+
+        final Token keyword;
+        final Token method;
+    }
     public static class This extends Expr{
 
         public This(Token keyword) {
