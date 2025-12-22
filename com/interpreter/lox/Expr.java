@@ -26,6 +26,12 @@ abstract class Expr {
         R visitLogicalExpr(Logical expr);
 
         R visitCallExpr(Call expr);
+
+        R visitGetExpr(Get expr);
+
+        R visitSetExpr(Set expr);
+
+        R visitThisExpr(This expr);
     }
 
     public static class Comma extends Expr {
@@ -155,6 +161,52 @@ abstract class Expr {
         final Expr right;
     }
 
+    public static class This extends Expr{
+
+        public This(Token keyword) {
+            this.keyword = keyword;
+        }
+
+        @Override
+        <R> R accept(Visitor<R> visitor){
+            return visitor.visitThisExpr(this);
+        }
+
+        final Token keyword;
+    }
+
+    public static class Get extends Expr{
+        Get(Token name,Expr object){
+            this.name = name;
+            this.object = object;
+        }
+
+        @Override
+        <R> R accept(Visitor<R> visitor){
+            return visitor.visitGetExpr(this);
+        }
+
+        final Expr object;
+        final Token name;
+    }
+
+    public static class Set extends Expr {
+
+        Set(Token name, Expr object,Expr value) {
+            this.name = name;
+            this.object = object;
+            this.value = value;
+        }
+
+        @Override
+        <R> R accept(Visitor<R> visitor) {
+            return visitor.visitSetExpr(this);
+        }
+
+        final Expr object;
+        final Token name;
+        final Expr value;
+    }
     public static class Assign extends Expr {
 
         public Assign(Token name, Expr value) {

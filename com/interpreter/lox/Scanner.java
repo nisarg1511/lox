@@ -41,6 +41,7 @@ public class Scanner {
         keywords.put("while", TokenType.WHILE);
         keywords.put("break",TokenType.BREAK);
         keywords.put("continue", TokenType.CONTINUE);
+        keywords.put("static",TokenType.STATIC);
     }
 
     public Scanner(String source) {

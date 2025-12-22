@@ -25,6 +25,8 @@ public abstract class Stmt {
         R visitFunctionStmt(Function stmt);
 
         R visitReturnStmt(Return stmt);
+
+        R visitClassStmt(Class stmt);
     }
 
     public static class Return extends Stmt{
@@ -43,13 +45,28 @@ public abstract class Stmt {
         }
     }
 
+    public static class Class extends Stmt{
+        Class(Token name,List<Stmt.Function> methods){
+            this.name =  name;
+            this.methods = methods;
+        }
+
+        @Override
+        <R> R accept(Visitor<R> visitor) {    
+            return visitor.visitClassStmt(this);
+        }
+        final Token name;
+        final List<Stmt.Function> methods;
+    }
+
     public static class Function extends Stmt{
         
 
-        public Function(Token name,List<Token> parameters,List<Stmt> body) {
+        public Function(Token name,List<Token> parameters,List<Stmt> body,boolean isStatic) {
             this.name =name;
             this.parameters =parameters;
             this.body =body;
+            this.isStatic = isStatic;
         }
         
         @Override
@@ -60,6 +77,7 @@ public abstract class Stmt {
         final Token name; 
         final List<Token> parameters;
         final List<Stmt> body;
+        final boolean  isStatic;
     }
     public static class Continue extends Stmt{
         @Override 

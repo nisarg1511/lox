@@ -36,10 +36,17 @@ public class Parser {
         if (match(TokenType.EQUAL)) {
             Token equals = previous();
             Expr value = assignment();
-            if (expr instanceof Expr.Variable variable) {
-                Token name = variable.name;
-                return new Expr.Assign(name, value);
-
+            switch (expr) {
+                case Expr.Variable variable -> {
+                    Token name = variable.name;
+                    return new Expr.Assign(name, value);
+                    
+                }
+                case Expr.Get get -> {
+                    return new Expr.Set(get.name,get.object,value);
+                }
+                default -> {
+                }
             }
             error(equals, "Invalid assignment target.");
         }
@@ -146,6 +153,9 @@ public class Parser {
         while(true){
             if(match(TokenType.LEFT_PAREN)){
                 expr = finishCall(expr);
+            }else if(match(TokenType.DOT)){
+                Token name = consume(TokenType.IDENTIFIER,"Expect property name after '.' ." );
+                expr = new Expr.Get(name,expr);
             }else{
                 break;
             }
@@ -189,6 +199,10 @@ public class Parser {
         if (match(TokenType.IDENTIFIER)) {
             return new Expr.Variable(previous());
         }
+        if(match(TokenType.THIS)){
+            return new Expr.This(previous());
+        }
+
         throw error(peek(), "Expect Expression");
     }
 
@@ -265,7 +279,7 @@ public class Parser {
         return new Stmt.Print(value);
     }
 
-    private Stmt.Function function(String kind){
+    private Stmt.Function function(String kind,boolean isStatic){
         Token name = consume(TokenType.IDENTIFIER,"Expect " + kind + " name.");
         consume(TokenType.LEFT_PAREN,"Expect '(' after " + kind +" name.");
         List<Token> params = new ArrayList<>();
@@ -281,7 +295,7 @@ public class Parser {
         consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters");
         consume(TokenType.LEFT_BRACE,"Expect '{' before "+kind+" body.");
         List<Stmt> body = block();
-        return new Stmt.Function(name,params,body);
+        return new Stmt.Function(name,params,body,isStatic);
     }
 
     private Stmt expressionStatement() {
@@ -302,12 +316,31 @@ public class Parser {
         return new Stmt.Return(keyword,value);
     }
 
+    private Stmt classDeclaration(){
+        Token name = consume(TokenType.IDENTIFIER,"Expect class name.");
+        consume(TokenType.LEFT_BRACE,"Expect '{' before class body.");
+        List<Stmt.Function> methods = new ArrayList<>();
+        while(!check(TokenType.RIGHT_BRACE)&&!isAtEnd()){
+            boolean isStatic = false;
+            if(check(TokenType.STATIC)){
+                consume(TokenType.STATIC,"");
+                isStatic = true;
+            }
+            methods.add(function("method",isStatic));
+        }
+        consume(TokenType.RIGHT_BRACE,"Expect '}' after class body.");
+        return new Stmt.Class(name,methods);
+    }
+
     private Stmt statement() {
+        if(match(TokenType.CLASS)){
+            return classDeclaration();
+        }
         if(match(TokenType.RETURN)){
             return  returnStmt();
         }
         if(match(TokenType.FUN)){
-            return function("function");
+            return function("function",false);
         }
         if(match(TokenType.CONTINUE)){
             return continueStatement();
